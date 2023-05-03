@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler_org
-import searchdata_org
-import searchdata_org
+import crawler
+import search
+import searchdata
 output = open('fruits-idf-failed.txt', 'w')
 success_output = open('fruits-idf-passed.txt', 'w')
 

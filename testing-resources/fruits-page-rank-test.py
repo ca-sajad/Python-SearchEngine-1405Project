@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler_org
-import searchdata_org
-import searchdata_org
+import crawler
+import search
+import searchdata
 output = open('fruits-page-rank-failed.txt', 'w')
 success_output = open('fruits-page-rank-passed.txt', 'w')
 

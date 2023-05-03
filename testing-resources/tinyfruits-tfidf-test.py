@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler_org
-import searchdata_org
-import searchdata_org
+import crawler
+import search
+import searchdata
 output = open('tinyfruits-tfidf-failed.txt', 'w')
 success_output = open('tinyfruits-tfidf-passed.txt', 'w')
 
