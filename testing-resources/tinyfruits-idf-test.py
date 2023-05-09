@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler
-import search
-import searchdata
+from searchEngine import crawler
+from searchEngine import search
+from searchEngine import searchdata
 output = open('tinyfruits-idf-failed.txt', 'w')
 success_output = open('tinyfruits-idf-passed.txt', 'w')
 

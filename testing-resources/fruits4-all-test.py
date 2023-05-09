@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler
-import search
-import searchdata
+from searchEngine import crawler
+from searchEngine import search
+from searchEngine import searchdata
 
 #Performing crawl starting at seed http://people.scs.carleton.ca/~davidmckenney/fruits4/N-0.html
 crawler.crawl('http://people.scs.carleton.ca/~davidmckenney/fruits4/N-0.html')

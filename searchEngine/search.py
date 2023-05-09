@@ -1,10 +1,20 @@
 import math
-import searchdata
-from constants import *
+from searchEngine import searchdata
+from searchEngine.constants import *
+from searchEngine.db_initialize import database
 
+urls = None
+titles = None
 
+'''
+receives a phrase of words and True/False as boost 
+if boost==True: page rank calculations will be added to the serach
+returns top 10 (or any number set in constants.py) of urls having the most similarity to the phrase 
+'''
 def search(phrase, boost):
-    urls, titles = read_urls_titles()
+    global urls, titles
+    if not urls and not titles:
+        urls, titles = read_urls_titles()
     if boost:
         page_ranks = read_page_ranks()
     else:
@@ -14,22 +24,21 @@ def search(phrase, boost):
 
 
 '''
-reads and returns lists of URLs and their titles from a json file
+reads and returns lists of URLs and their titles from the database collection PAGE_DATA
 '''
 def read_urls_titles():
-    json_data = searchdata.read_file(URLS_FILE_NAME)
-    urls = [_dict[URL] for _dict in json_data]
-    titles = [_dict[TITLE] for _dict in json_data]
+    items = list(database[PAGE_DATA].find({}, {"_id": 0, "url": 1, "title": 1}))
+    urls = [item["url"] for item in items]
+    titles = [item["title"] for item in items]
     return urls, titles
 
 
 '''
-reads and returns a list of page rank values from a json file
+reads and returns a list of page rank values from the database collection PAGE_DATA
 '''
 def read_page_ranks():
-    urls_ranks_dic = searchdata.read_file(PAGE_RANK_FILE_NAME)
-    page_ranks = list(urls_ranks_dic.values())
-    return page_ranks
+    items = database[PAGE_DATA].find({}, {"_id": 0, "page_rank": 1})
+    return [item["page_rank"] for item in items]
 
 
 '''

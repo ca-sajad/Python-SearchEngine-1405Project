@@ -1,52 +1,54 @@
-import json
-import os
-from constants import *
+'''
+retreives the parameters extracted, calculated, and saved during the crawling process
+'''
 
-word_tf_idf_dict = {}           # key: URL, value: a dictionary of idf-tf values (key: word, value: tf-idf)
+from searchEngine.constants import PAGE_DATA, IDF_DATA
+from searchEngine.db_initialize import database
+
+tf_idf_list = None
 
 
 def get_outgoing_links(url):
-    outgoing_links_dict = read_file(LINKS_OUT_FILE_NAME)
-    return outgoing_links_dict.get(url, None)
+    links = database[PAGE_DATA].find_one({"url": url}, {"_id": 0, "outgoing_links": 1})
+    if links:
+        return links.get("outgoing_links")
+    return None
 
 
 def get_incoming_links(url):
-    incoming_links_dict = read_file(LINKS_IN_FILE_NAME)
-    return incoming_links_dict.get(url, None)
+    links = database[PAGE_DATA].find_one({"url": url}, {"_id": 0, "outgoing_links": 1})
+    if links:
+        return links.get("outgoing_links")
+    return None
 
 
 def get_tf(url, word):
-    temp_dict = read_file(TF_FILE_NAME)
-    if url in temp_dict:
-        word_dict = temp_dict[url]
-        if word_dict:
-            return float(word_dict.get(word, 0))
+    tf_dict = database[PAGE_DATA].find_one({"url": url}, {"_id": 0, "tf_list": 1})
+    if tf_dict:
+        return tf_dict.get("tf_list").get(word, 0)
     return 0
 
 
 def get_idf(word):
-    word_idf_dict = read_file(IDF_FILE_NAME)
-    return word_idf_dict.get(word, 0)
+    idf = database[IDF_DATA].find_one({"word": word}, {"_id": 0, "idf": 1})
+    if idf:
+        return idf.get("idf")
+    return 0
 
 
 def get_tf_idf(url, word):
-    global word_tf_idf_dict
-    if not word_tf_idf_dict:
-        word_tf_idf_dict = read_file(TF_IDF_FILE_NAME)
-    url_dict = word_tf_idf_dict.get(url, {})
-    idf_tf = url_dict.get(word, 0)
-    return idf_tf
+    global tf_idf_list
+    if not tf_idf_list:
+        tf_idf_list = list(database[PAGE_DATA].find({}, {"_id": 0, "url": 1, "tf_idf": 1}))
+    for item in tf_idf_list:
+        if item["url"] == url:
+            return item.get("tf_idf").get(word, 0)
+    return 0
 
 
 def get_page_rank(url):
-    urls_ranks_dict = read_file(PAGE_RANK_FILE_NAME)
-    return urls_ranks_dict.get(url, -1)
-
-
-'''
-reads and returns contents of a json file with the name "file_name"
-'''
-def read_file(file_name):
-    with open(os.path.join(BASE_DIR, file_name), "r") as file:
-        return json.load(file)
+    page_rank = database[PAGE_DATA].find_one({"url": url}, {"_id": 0, "page_rank": 1})
+    if page_rank:
+        return page_rank.get("page_rank")
+    return -1
 

@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler
-import search
-import searchdata
+from searchEngine import crawler
+from searchEngine import search
+from searchEngine import searchdata
 output = open('fruits5-tfidf-failed.txt', 'w')
 success_output = open('fruits5-tfidf-passed.txt', 'w')
 

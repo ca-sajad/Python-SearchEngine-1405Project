@@ -1,24 +1,23 @@
-import json
-import os
-import webdev
-from constants import *
-from matmult import *
+from searchEngine import webdev
+from searchEngine.constants import *
+from searchEngine.matmult import *
+from collections import deque
+from searchEngine.db_initialize import database
 
-
+'''
+receives a url as seed and calculates tf, idf, tf-idf, and page rank values of the seed and all connected urls 
+'''
 def crawl(seed):
-    delete_files(BASE_DIR)
-    if not os.path.isdir(BASE_DIR):
-        os.makedirs(BASE_DIR)
-
-    queue_urls = [seed]
+    url_stack = deque()
+    url_stack.append(seed)
     processed_urls = []
-    words_count_dict = {}           # key: word, value: occurrences of the word per page
-    words_rel_freq_dict = {}        # key: URL, value: dictionary of rel freq of words in the URL (key: word, value: tf)
-    links_dict = {}                 # key: URL, value: outgoing links in the URL
+    words_count_dict = {}  # key: word, value: occurrences of the word per page
+    words_rel_freq_dict = {}  # key: URL, value: dictionary of rel freq of words in the URL (key: word, value: tf)
+    links_dict = {}  # key: URL, value: outgoing links in the URL
     titles = []
 
-    while queue_urls:
-        url = queue_urls[0]
+    while len(url_stack) > 0:
+        url = url_stack.pop()
         # finding base URL
         url_list = url.split(SLASH)
         url_name_index = url.find(url_list[-1])
@@ -33,11 +32,11 @@ def crawl(seed):
 
         link_list = extract_links(base_url, page_content)
         for link in link_list:
-            if link not in queue_urls and link not in processed_urls:
-                queue_urls.append(link)
+            if link not in url_stack and link not in processed_urls:
+                url_stack.append(link)
         words_count_dict, words_rel_freq_dict[url] = calculate_word_freq(words_count_dict, word_list)
         links_dict[url] = link_list
-        processed_urls.append(queue_urls.pop(0))
+        processed_urls.append(url)
     write_tf_data(words_rel_freq_dict)
     write_idf_data(words_count_dict, len(processed_urls))
     write_tf_idf_data(processed_urls, words_rel_freq_dict)
@@ -45,17 +44,6 @@ def crawl(seed):
     write_urls(processed_urls, titles)
     write_page_rank(processed_urls, links_dict)
     return len(processed_urls)
-
-
-'''
-deletes files in the "path" directory and the directory itself
-'''
-def delete_files(path):
-    if os.path.exists(path):
-        list_files = os.listdir(path)
-        for file in list_files:
-            os.remove(os.path.join(path, file))
-        os.rmdir(path)
 
 
 '''
@@ -123,96 +111,104 @@ def calculate_word_freq(words_count_dict, word_list):
 
 
 '''
-writes a dictionary tf values to a json file
-key: URL, value: dictionary of tf values
+writes a url and tf values to the mongoDB collection PAGE_DATA
+"url": url, "tf_list": dictionary of tf values
 example:
-"http://people.scs.carleton.ca/~davidmckenney/tinyfruits/N-0.html": {
+{
+    "url": "http://people.scs.carleton.ca/~davidmckenney/tinyfruits/N-0.html",
+    "tf_list":{
         "kiwi": 0.8,
-        "banana": 0.2,
-    }
+        "banana": 0.2
+        }
+}
 '''
 def write_tf_data(words_dict):
-    write_file(TF_FILE_NAME, words_dict)
+    items = []
+    for key, value in zip(words_dict.keys(), words_dict.values()):
+        items.append({"url": key, "tf_list": value})
+    database[PAGE_DATA].insert_many(items)
 
 
 '''
-calculates idf values and writes them as a dictionary to a json file
-key: word, value: idf
+calculates idf values and writes them to the mongoDB collection IDF_DATA
+"word": word, "idf": value
 '''
 def write_idf_data(word_count_dict, page_counter):
     word_idf_dict = {word: math.log2(page_counter / (1 + word_count_dict[word]))
                      for word in word_count_dict.keys()}
-    write_file(IDF_FILE_NAME, word_idf_dict)
+    items = []
+    for key, value in zip(word_count_dict.keys(), word_idf_dict.values()):
+        items.append({"word": key, "idf": value})
+    database[IDF_DATA].insert_many(items)
 
 
 '''
-reads idf values from a file, get tf values as input (words_rel_freq_dict)
-calculates idf-tf values and writes them as a dictionary to a json file
-key: URL, value: dictionary of tf-idf values
-example:
-"http://people.scs.carleton.ca/~davidmckenney/tinyfruits/N-0.html": {
+reads idf values from the database, get tf values as input (words_rel_freq_dict)
+calculates idf-tf values and adds them to the mongoDB collection PAGE_DATA
+"url": url, "tf_idf": dictionary of tf-idf values
+example for updating the collection:
+{
+    "url": "http://people.scs.carleton.ca/~davidmckenney/tinyfruits/N-0.html",
+    "tf_idf_list":{
         "kiwi": 0.038726093486678055,
-        "apple": 0.07447019235682993,
-    }
+        "apple": 0.07447019235682993
+        }
+}
 '''
 def write_tf_idf_data(urls, words_rel_freq_dict):
-    with open(os.path.join(BASE_DIR, IDF_FILE_NAME), "r") as idf_file:
-        word_idf_dict = json.load(idf_file)
-    idf_tf_dict = {}
+    word_idf_dict = list(database.idf_data.find())
     for url in urls:
         temp_dict = {}
-        for word in word_idf_dict:
-            idf = word_idf_dict.get(word, 0)
+        for item in word_idf_dict:
+            idf = item["idf"]
+            word = item["word"]
             tf_dict = words_rel_freq_dict.get(url, None)
             if tf_dict:
                 tf = float(tf_dict.get(word, 0))
                 idf_tf = math.log2(1 + tf) * idf
                 temp_dict[word] = idf_tf
-        idf_tf_dict[url] = temp_dict
-
-    write_file(TF_IDF_FILE_NAME, idf_tf_dict)
+        database[PAGE_DATA].update_one({"url": url}, {"$set": {"tf_idf_list": temp_dict}})
 
 
 '''
-writes a dictionary of incoming/outgoing links to a json file, 
-key: URL, value: linked URLs
+adds incoming/outgoing links to the mongoDB collection PAGE_DATA 
+"url": url, "incoming_list"/"outgoing_list": linked URLs
 '''
 def write_inout_links(links_dict):
     # finding incoming links
     incoming_links_dict = {}
     for url_1, url_link_list in links_dict.items():
+        database.page_data.update_one({"url": url_1}, {"$set": {"outgoing_links": url_link_list}})
         for url_2 in url_link_list:
             if not incoming_links_dict.get(url_2, None):
                 incoming_links_dict[url_2] = []
             incoming_links_dict[url_2].append(url_1)
 
-    write_file(LINKS_OUT_FILE_NAME, links_dict)
-    write_file(LINKS_IN_FILE_NAME, incoming_links_dict)
+    for url, url_list in incoming_links_dict.items():
+        database[PAGE_DATA].update_one({"url": url}, {"$set": {"incoming_links": url_list}})
 
 
 '''
-writes a list of dictionaries of URLs to a json file, with keys and values
+adds a url's relative link and title to the mongoDB collection PAGE_DATA 
 example:
 {
     "url": "http://people.scs.carleton.ca/~davidmckenney/tinyfruits/N-0.html",
-    "link_rel": "N-0.html",
+    "relative_link": "N-0.html",
     "title": "N-0"
 }
 '''
 def write_urls(urls, titles):
-    list_urls = []
     for i, url in enumerate(urls):
         last_dash = url.rfind(SLASH)
         link_rel = url[last_dash + 1:]
-        temp_dict = {URL: url, LINK_REL: link_rel, TITLE: titles[i]}
-        list_urls.append(temp_dict)
-    write_file(URLS_FILE_NAME, list_urls)
+        database[PAGE_DATA].update_one({"url": url},
+                                       {"$set": {"url": url, "relative_link": link_rel, "title": titles[i]}})
 
 
 '''
 calculates page rank of crawled pages, based on Random Surfer Model
-writes a dictionary of page rank values to a json file
-key: URL, value: page rank
+adds page rank to the mongoDB collection PAGE_DATA 
+"url": url, "page_rank": page rank
 '''
 def write_page_rank(urls, links_dict):
     url_count = len(urls)
@@ -234,16 +230,6 @@ def write_page_rank(urls, links_dict):
         array_2 = matrix_mult(array_1, adjacency_matrix)
         error = euclidean_dist(array_1, array_2)
         array_1 = array_2
-    temp_dict = {urls[i]: rank for i, rank in enumerate(array_1[0])}
-    # write to a json file
-    write_file(PAGE_RANK_FILE_NAME, temp_dict)
 
-
-'''
-write input data to a file with the name "file_name" in the base directory
-'''
-def write_file(file_name, data):
-    with open(os.path.join(BASE_DIR, file_name), "w") as file:
-        json.dump(data, file, indent=4)
-
-
+    for i in range(len(urls)):
+        database[PAGE_DATA].update_one({"url": urls[i]}, {"$set": {"page_rank": array_1[0][i]}})
