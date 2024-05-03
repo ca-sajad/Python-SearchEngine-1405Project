@@ -1,8 +1,8 @@
 
 import testingtools
-import crawler_org
-import searchdata_org
-import searchdata_org
+import crawler
+import searchdata
+
 output = open('fruits2-incoming-links-failed.txt', 'w')
 success_output = open('fruits2-incoming-links-passed.txt', 'w')
 
