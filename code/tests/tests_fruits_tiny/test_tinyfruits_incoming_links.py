@@ -1,5 +1,5 @@
 import pytest
-from code import searchdata
+from code.search_code import searchdata
 
 
 def incoming_links_results():

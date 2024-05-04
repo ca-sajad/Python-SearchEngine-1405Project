@@ -1,5 +1,5 @@
-from code import searchdata
-from tests import testingtools
+from code.search_code import searchdata
+from code.tests import testingtools
 import pytest
 
 

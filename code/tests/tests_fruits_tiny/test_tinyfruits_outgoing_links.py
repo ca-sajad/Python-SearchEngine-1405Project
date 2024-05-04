@@ -1,4 +1,4 @@
-from code import searchdata
+from code.search_code import searchdata
 import pytest
 
 

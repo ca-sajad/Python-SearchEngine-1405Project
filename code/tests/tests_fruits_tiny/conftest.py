@@ -1,6 +1,6 @@
 import pytest
-from code.urls_to_crawl import FRUITS_TINY_URL
-from code import crawler
+from code.search_code.urls_to_crawl import FRUITS_TINY_URL
+from code.search_code import crawler
 
 
 @pytest.fixture(scope='package')

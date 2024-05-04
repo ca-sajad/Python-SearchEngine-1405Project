@@ -1,11 +1,14 @@
 import json
+import math
 import os
-import code.webdev as webdev
-from code.constants import *
-from code.matmult import *
+from code.search_code import webdev
+from code.search_code import matmult
+from code.search_code.constants import *
+from code.search_code.searchdata import clear_word_tf_idf_dict
 
 
 def crawl(seed):
+    clear_word_tf_idf_dict()
     delete_files(BASE_DIR)
     if not os.path.isdir(BASE_DIR):
         os.makedirs(BASE_DIR)
@@ -231,8 +234,8 @@ def write_page_rank(urls, links_dict):
     array_1 = [[1 / url_count] * url_count]
     error = 1
     while error > THRESHOLD:
-        array_2 = matrix_mult(array_1, adjacency_matrix)
-        error = euclidean_dist(array_1, array_2)
+        array_2 = matmult.matrix_mult(array_1, adjacency_matrix)
+        error = matmult.euclidean_dist(array_1, array_2)
         array_1 = array_2
     temp_dict = {urls[i]: rank for i, rank in enumerate(array_1[0])}
     # write to a json file

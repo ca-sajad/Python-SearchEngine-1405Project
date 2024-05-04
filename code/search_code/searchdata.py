@@ -1,8 +1,14 @@
 import json
 import os
-from code.constants import *
+from code.search_code.constants import *
+
 
 word_tf_idf_dict = {}           # key: URL, value: a dictionary of idf-tf values (key: word, value: tf-idf)
+
+
+def clear_word_tf_idf_dict():
+    global word_tf_idf_dict
+    word_tf_idf_dict = {}
 
 
 def get_outgoing_links(url):

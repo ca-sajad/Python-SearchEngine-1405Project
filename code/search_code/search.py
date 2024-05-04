@@ -1,6 +1,6 @@
 import math
-from code import searchdata
-from code.constants import *
+from code.search_code.constants import *
+import code.search_code.searchdata as searchdata
 
 
 def search(phrase, boost):
